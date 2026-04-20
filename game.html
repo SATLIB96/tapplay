@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#151210" />
   <title>Slide - Game</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #151210;
@@ -398,6 +399,25 @@
       box-shadow: 0 0 0 1px rgba(255, 248, 237, 0.48), 0 0 36px rgba(242, 228, 206, 0.29);
     }
 
+    .other-players {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .player-other {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffb088, #e8723a 72%);
+      box-shadow: 0 0 0 1px rgba(232, 114, 58, 0.55), 0 0 14px rgba(232, 114, 58, 0.38);
+      transform: translateX(-50%);
+      transition: bottom 0.56s cubic-bezier(0.19, 0.88, 0.29, 1), left 0.56s cubic-bezier(0.19, 0.88, 0.29, 1);
+      z-index: 2;
+    }
+
     .player.frozen {
       background: radial-gradient(circle at 35% 30%, #d3edff, var(--ice) 68%);
       box-shadow: 0 0 0 1px rgba(174, 217, 249, 0.58), 0 0 24px rgba(126, 190, 235, 0.31);
@@ -731,6 +751,7 @@
             <path class="track-path-center" id="trackPathCenter"></path>
           </svg>
           <div class="ticks" id="ticks"></div>
+          <div class="other-players" id="otherPlayersLayer"></div>
 
           <div class="player" id="player"></div>
         </div>
@@ -770,6 +791,17 @@
       var GAME_SECONDS = 60;
       var MAX_STEPS = 20;
       var DIRECTIONS = ["up", "down", "left", "right"];
+
+      var SUPABASE_URL = "https://yatxfyoyajojwlloochb.supabase.co";
+      var SUPABASE_KEY = "sb_publishable_UbJ2tQH1IkcmmONxgkJUZw_AYIF6hDw";
+      var MP_SESSION_ID = "slide-test-001";
+
+      var mpClient = null;
+      var mpChannel = null;
+      var mpPlayerId = null;
+      var otherAvatars = {};
+      var mpOtherPositions = {};
+      var otherPlayersLayerEl = document.getElementById("otherPlayersLayer");
 
       var timerEl = document.getElementById("timer");
       var scoreEl = document.getElementById("score");
@@ -858,6 +890,188 @@
         playerEl.style.left = point.x + "px";
         playerEl.style.bottom = point.bottom + "px";
         updateCompletedTicks(idx);
+      }
+
+      function initSupabaseClient() {
+        if (mpClient) {
+          return mpClient;
+        }
+        var sb = window.supabase;
+        if (sb && sb.default && typeof sb.default.createClient === "function") {
+          sb = sb.default;
+        }
+        if (!sb || typeof sb.createClient !== "function") {
+          return null;
+        }
+        mpClient = sb.createClient(SUPABASE_URL, SUPABASE_KEY);
+        return mpClient;
+      }
+
+      function pidOffset(pid) {
+        var h = 0;
+        for (var i = 0; i < pid.length; i += 1) {
+          h = (h << 5) - h + pid.charCodeAt(i);
+          h |= 0;
+        }
+        return (Math.abs(h) % 17) - 8;
+      }
+
+      function placeOtherAvatar(el, stepCount, pid) {
+        var idx = Math.max(0, Math.min(MAX_STEPS, stepCount));
+        if (!state.tickPoints.length) {
+          makeTicks();
+        }
+        var point = state.tickPoints[idx] || { x: trackEl.clientWidth / 2, bottom: 8 };
+        var off = pid ? pidOffset(pid) : 0;
+        el.style.left = point.x + off + "px";
+        el.style.bottom = point.bottom + "px";
+      }
+
+      function clearOtherAvatars() {
+        Object.keys(otherAvatars).forEach(function (id) {
+          var node = otherAvatars[id];
+          if (node && node.parentNode) {
+            node.parentNode.removeChild(node);
+          }
+        });
+        otherAvatars = {};
+        mpOtherPositions = {};
+      }
+
+      function unsubMultiplayer() {
+        if (mpChannel && mpClient) {
+          mpClient.removeChannel(mpChannel);
+        }
+        mpChannel = null;
+      }
+
+      function upsertOtherPlayer(pid, position) {
+        if (!pid || pid === mpPlayerId) {
+          return;
+        }
+        var pos = Math.max(0, Math.min(MAX_STEPS, Number(position) || 0));
+        mpOtherPositions[pid] = pos;
+        var el = otherAvatars[pid];
+        if (!el) {
+          el = document.createElement("div");
+          el.className = "player-other";
+          el.setAttribute("data-player-id", pid);
+          otherPlayersLayerEl.appendChild(el);
+          otherAvatars[pid] = el;
+        }
+        placeOtherAvatar(el, pos, pid);
+      }
+
+      function removeOtherPlayer(pid) {
+        if (!pid || pid === mpPlayerId) {
+          return;
+        }
+        delete mpOtherPositions[pid];
+        var el = otherAvatars[pid];
+        if (el && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+        delete otherAvatars[pid];
+      }
+
+      function refreshOtherPlayersFromDb() {
+        if (!mpClient) {
+          return;
+        }
+        mpClient
+          .from("game_sessions")
+          .select("*")
+          .eq("session_id", MP_SESSION_ID)
+          .then(function (res) {
+            var rows = (res && res.data) || [];
+            rows.forEach(function (row) {
+              if (row.player_id && row.player_id !== mpPlayerId) {
+                upsertOtherPlayer(row.player_id, row.position);
+              }
+            });
+          });
+      }
+
+      function syncPositionToServer(pos) {
+        if (!mpClient || !mpPlayerId) {
+          return;
+        }
+        mpClient
+          .from("game_sessions")
+          .update({ position: pos })
+          .eq("player_id", mpPlayerId)
+          .eq("session_id", MP_SESSION_ID)
+          .then();
+      }
+
+      function startMultiplayer() {
+        initSupabaseClient();
+        unsubMultiplayer();
+        clearOtherAvatars();
+        mpPlayerId = Math.random().toString(36).slice(2);
+        if (!mpClient) {
+          return;
+        }
+        mpClient
+          .from("game_sessions")
+          .insert({ player_id: mpPlayerId, session_id: MP_SESSION_ID, position: 0 })
+          .then(function () {
+            refreshOtherPlayersFromDb();
+          });
+        mpChannel = mpClient
+          .channel("game_sessions:" + MP_SESSION_ID)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "game_sessions",
+              filter: "session_id=eq." + MP_SESSION_ID
+            },
+            function (payload) {
+              if (payload.eventType === "DELETE") {
+                var oldRow = payload.old;
+                if (oldRow && oldRow.player_id) {
+                  removeOtherPlayer(oldRow.player_id);
+                }
+                return;
+              }
+              var row = payload.new;
+              if (row && row.player_id && row.player_id !== mpPlayerId) {
+                upsertOtherPlayer(row.player_id, row.position);
+              }
+            }
+          )
+          .subscribe();
+      }
+
+      function endMultiplayerFinal() {
+        if (!mpClient || !mpPlayerId) {
+          unsubMultiplayer();
+          clearOtherAvatars();
+          mpPlayerId = null;
+          return;
+        }
+        mpClient
+          .from("game_sessions")
+          .update({ position: state.steps })
+          .eq("player_id", mpPlayerId)
+          .eq("session_id", MP_SESSION_ID)
+          .then(function () {
+            unsubMultiplayer();
+            clearOtherAvatars();
+            mpPlayerId = null;
+          });
+      }
+
+      function repositionAllOtherPlayers() {
+        Object.keys(otherAvatars).forEach(function (pid) {
+          var el = otherAvatars[pid];
+          var pos = mpOtherPositions[pid];
+          if (el && typeof pos === "number") {
+            placeOtherAvatar(el, pos, pid);
+          }
+        });
       }
 
       function updateTopUi() {
@@ -977,6 +1191,7 @@
         if (isCorrect) {
           state.steps = Math.min(MAX_STEPS, state.steps + 1);
           setPlayerStep(state.steps);
+          syncPositionToServer(state.steps);
           playerEl.classList.add("climb");
           setTimeout(function () {
             playerEl.classList.remove("climb");
@@ -1051,6 +1266,7 @@
         playerEl.classList.remove("frozen");
         document.querySelector(".controls").classList.remove("frozen");
         setStatus("time up", false);
+        endMultiplayerFinal();
         resultLineEl.textContent = "you climbed " + state.steps + "/" + MAX_STEPS + " steps";
         taglineLineEl.textContent = getTagline(state.steps);
         endScreenEl.classList.remove("perfect", "zero");
@@ -1090,6 +1306,7 @@
 
       function startGame() {
         resetStateForGame();
+        startMultiplayer();
         startRound();
         state.timerIntervalId = setInterval(function () {
           state.secondsLeft -= 1;
@@ -1122,6 +1339,7 @@
       window.addEventListener("resize", function () {
         makeTicks();
         setPlayerStep(state.steps);
+        repositionAllOtherPlayers();
       });
 
       makeTicks();
