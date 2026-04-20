@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151210" />
+  <title>Slide - Game</title>
+  <style>
+    :root {
+      --bg: #151210;
+      --orange: #e8723a;
+      --cream: #f2e4ce;
+      --ice: #9cc7ea;
+      --good: #61d390;
+      --bad: #f16e6e;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1c1714 0%, var(--bg) 52%);
+      color: #f6eee1;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .game {
+      height: 100dvh;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 22vh 50vh 28vh;
+      padding: 0 1.1rem;
+      gap: 0;
+      position: relative;
+      isolation: isolate;
+    }
+
+    .top-zone {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      align-content: start;
+      justify-items: center;
+      height: 22vh;
+      min-height: 0;
+      padding-top: max(0.75rem, env(safe-area-inset-top));
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0.25rem 0.3rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .timer {
+      color: var(--orange);
+      font-size: clamp(1.65rem, 9vw, 2.3rem);
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 20px rgba(232, 114, 58, 0.28);
+    }
+
+    .score {
+      font-size: 0.82rem;
+      color: rgba(242, 228, 206, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.14rem;
+    }
+
+    .score strong {
+      font-size: 1.2rem;
+      line-height: 1;
+      color: #fff2dc;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    .arena {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 50vh;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .villain-stage {
+      width: 100%;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      row-gap: 0.22rem;
+      min-height: 0;
+    }
+
+    .status {
+      position: static;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(242, 228, 206, 0.9);
+      min-height: 1em;
+      text-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
+      transition: color 0.2s ease;
+    }
+
+    .status.frozen {
+      color: #b9d8f4;
+    }
+
+    .track-wrap {
+      width: min(78vw, 300px);
+      max-width: 100%;
+      height: 100%;
+      min-height: 0;
+      max-height: none;
+      display: grid;
+      place-items: center;
+      position: relative;
+      padding-top: 0.25rem;
+      padding-bottom: 0.6rem;
+    }
+
+    .track {
+      position: relative;
+      width: 200px;
+      height: 100%;
+      min-height: 0;
+      max-height: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .track-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .track-path-glow {
+      fill: none;
+      stroke: rgba(232, 114, 58, 0.2);
+      stroke-width: 22;
+      stroke-linecap: round;
+      filter: blur(3px);
+    }
+
+    .track-path-core {
+      fill: none;
+      stroke: rgba(255, 226, 206, 0.18);
+      stroke-width: 12;
+      stroke-linecap: round;
+    }
+
+    .track-path-center {
+      fill: none;
+      stroke: rgba(255, 168, 120, 0.65);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 7 11;
+    }
+
+    .ticks {
+      position: absolute;
+      inset: 0;
+    }
+
+    .tick {
+      position: absolute;
+      width: 20px;
+      height: 6px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: rgba(242, 228, 206, 0.46);
+      box-shadow: 0 0 0 1px rgba(255, 245, 232, 0.15);
+      transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .tick.completed {
+      background: linear-gradient(90deg, #ffb087, #e8723a);
+      box-shadow: 0 0 12px rgba(232, 114, 58, 0.56);
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    .villain-zone {
+      position: relative;
+      width: 180px;
+      height: 170px;
+      pointer-events: none;
+      display: grid;
+      grid-template-rows: auto auto;
+      justify-items: center;
+      align-content: start;
+      row-gap: 0.7rem;
+    }
+
+    .villain {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      transform: rotate(45deg);
+      border-radius: 8px;
+      background: linear-gradient(160deg, #f18b52, #d95f26);
+      box-shadow: 0 0 0 1px rgba(255, 187, 151, 0.3), 0 0 24px rgba(232, 114, 58, 0.5);
+      animation: villainPulse 2.3s ease-in-out infinite;
+    }
+
+    @keyframes villainPulse {
+      0%,
+      100% {
+        box-shadow: 0 0 0 1px rgba(255, 187, 151, 0.26), 0 0 14px rgba(232, 114, 58, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 1px rgba(255, 187, 151, 0.35), 0 0 30px rgba(232, 114, 58, 0.56);
+      }
+    }
+
+    .villain.swipe {
+      animation: villainPulse 2.3s ease-in-out infinite, swipeSnap 0.22s cubic-bezier(0.15, 0.9, 0.3, 1);
+    }
+
+    @keyframes swipeSnap {
+      0% {
+        transform: rotate(45deg) scale(1);
+      }
+      45% {
+        transform: rotate(45deg) scale(1.23);
+      }
+      100% {
+        transform: rotate(45deg) scale(1);
+      }
+    }
+
+    .round-timer {
+      width: 120px;
+      display: grid;
+      gap: 0;
+      justify-items: center;
+    }
+
+    .round-bar {
+      width: 100%;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(255, 221, 201, 0.16);
+      overflow: hidden;
+      border: 1px solid rgba(255, 190, 156, 0.2);
+    }
+
+    .round-bar-fill {
+      width: 100%;
+      height: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, #f7a075 0%, var(--orange) 65%);
+      box-shadow: 0 0 14px rgba(232, 114, 58, 0.46);
+    }
+
+    .round-bar-fill.animate {
+      animation: drain 2.5s linear forwards;
+    }
+
+    @keyframes drain {
+      from {
+        transform: scaleX(1);
+      }
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    .arrow {
+      position: absolute;
+      left: 50%;
+      top: 22px;
+      width: 30px;
+      height: 30px;
+      transform-origin: 50% 0;
+      opacity: 0;
+      filter: drop-shadow(0 0 12px rgba(232, 114, 58, 0.95));
+      pointer-events: none;
+    }
+
+    .arrow::before,
+    .arrow::after {
+      content: "";
+      position: absolute;
+      background: linear-gradient(180deg, #ffc09f 0%, #f07d45 68%);
+      border-radius: 99px;
+    }
+
+    .arrow::before {
+      left: 12px;
+      top: 5px;
+      width: 6px;
+      height: 72px;
+    }
+
+    .arrow::after {
+      left: 4px;
+      top: -6px;
+      width: 22px;
+      height: 22px;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }
+
+    .arrow.show {
+      opacity: 1;
+      animation: shoot 1s cubic-bezier(0.14, 0.72, 0.15, 1) forwards;
+    }
+
+    .arrow[data-dir="up"] {
+      transform: translate(-50%, 0) rotate(0deg);
+    }
+    .arrow[data-dir="down"] {
+      transform: translate(-50%, 0) rotate(180deg);
+    }
+    .arrow[data-dir="left"] {
+      transform: translate(-50%, 0) rotate(-90deg);
+    }
+    .arrow[data-dir="right"] {
+      transform: translate(-50%, 0) rotate(90deg);
+    }
+
+    @keyframes shoot {
+      0% {
+        opacity: 0.05;
+      }
+      10% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -130px) rotate(var(--rot, 0deg));
+      }
+    }
+
+    .arrow[data-dir="up"].show {
+      --rot: 0deg;
+    }
+    .arrow[data-dir="down"].show {
+      --rot: 180deg;
+    }
+    .arrow[data-dir="left"].show {
+      --rot: -90deg;
+    }
+    .arrow[data-dir="right"].show {
+      --rot: 90deg;
+    }
+
+    .player {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff5e7, var(--cream) 70%);
+      box-shadow: 0 0 0 1px rgba(255, 248, 237, 0.45), 0 0 26px rgba(242, 228, 206, 0.21);
+      transform: translateX(-50%);
+      transition: bottom 0.56s cubic-bezier(0.19, 0.88, 0.29, 1), filter 0.22s ease, box-shadow 0.22s ease;
+      z-index: 3;
+    }
+
+    .player.climb {
+      box-shadow: 0 0 0 1px rgba(255, 248, 237, 0.48), 0 0 36px rgba(242, 228, 206, 0.29);
+    }
+
+    .player.frozen {
+      background: radial-gradient(circle at 35% 30%, #d3edff, var(--ice) 68%);
+      box-shadow: 0 0 0 1px rgba(174, 217, 249, 0.58), 0 0 24px rgba(126, 190, 235, 0.31);
+      filter: saturate(0.9);
+      animation: freezeShake 0.26s linear 6;
+    }
+
+    .player.frozen::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.45), transparent 34%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.28), transparent 42%);
+      opacity: 0.55;
+    }
+
+    @keyframes freezeShake {
+      0%,
+      100% {
+        transform: translateX(-50%) translateX(0);
+      }
+      25% {
+        transform: translateX(-50%) translateX(-2px);
+      }
+      50% {
+        transform: translateX(-50%) translateX(2px);
+      }
+      75% {
+        transform: translateX(-50%) translateX(-1px);
+      }
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(64px, 88px));
+      grid-template-rows: repeat(3, 62px);
+      justify-content: center;
+      align-content: center;
+      gap: 0.46rem;
+      margin-top: 0.15rem;
+      height: 28vh;
+      overflow: hidden;
+      min-height: 0;
+      padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
+    }
+
+    .btn {
+      border: 2px solid rgba(232, 114, 58, 0.56);
+      border-radius: 14px;
+      background: transparent;
+      color: rgba(232, 114, 58, 0.9);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      user-select: none;
+      transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, border-color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .btn:active,
+    .btn.hit {
+      background: rgba(232, 114, 58, 0.94);
+      color: #1a120d;
+      border-color: #f39a6c;
+      transform: scale(0.97);
+    }
+
+    .controls.frozen .btn {
+      opacity: 0.38;
+      border-color: rgba(156, 199, 234, 0.45);
+      color: rgba(156, 199, 234, 0.85);
+    }
+
+    .btn.resolve-correct {
+      animation: btnResolveGood 0.4s ease;
+    }
+
+    .btn.resolve-wrong {
+      animation: btnResolveBad 0.42s ease;
+    }
+
+    @keyframes btnResolveGood {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.96); background: rgba(97, 211, 144, 0.92); border-color: rgba(97, 211, 144, 0.95); color: #102418; }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes btnResolveBad {
+      0% { transform: translateX(0) scale(1); }
+      20% { transform: translateX(-3px) scale(0.97); background: rgba(241, 110, 110, 0.88); border-color: rgba(241, 110, 110, 0.95); color: #300f0f; }
+      40% { transform: translateX(3px) scale(0.97); }
+      60% { transform: translateX(-2px) scale(0.97); }
+      80% { transform: translateX(2px) scale(0.98); }
+      100% { transform: translateX(0) scale(1); }
+    }
+
+    .btn.up { grid-column: 2; grid-row: 1; }
+    .btn.left { grid-column: 1; grid-row: 2; }
+    .btn.right { grid-column: 3; grid-row: 2; }
+    .btn.down { grid-column: 2; grid-row: 3; }
+
+    .btn .chev {
+      width: 14px;
+      height: 14px;
+      border-top: 3px solid currentColor;
+      border-right: 3px solid currentColor;
+      margin-bottom: 0.12rem;
+    }
+    .btn.up .chev { transform: rotate(-45deg); }
+    .btn.right .chev { transform: rotate(45deg); }
+    .btn.down .chev { transform: rotate(135deg); }
+    .btn.left .chev { transform: rotate(-135deg); }
+    .btn-label { margin-top: -0.15rem; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: max(1rem, env(safe-area-inset-top)) 1.2rem max(1.2rem, env(safe-area-inset-bottom));
+      background: rgba(14, 11, 10, 0.84);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.28s ease, visibility 0.28s step-end;
+    }
+
+    .overlay.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.28s ease, visibility 0s;
+    }
+
+    .start-title {
+      font-size: clamp(2rem, 12vw, 3.5rem);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ffe9da;
+      margin-bottom: 0.6rem;
+    }
+
+    .start-sub {
+      color: rgba(242, 228, 206, 0.82);
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+      max-width: 18rem;
+      line-height: 1.45;
+      margin-bottom: 1.4rem;
+    }
+
+    .cta {
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #f18b52 0%, var(--orange) 78%);
+      color: #24170f;
+      padding: 0.95rem 2rem;
+      font-size: 0.86rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 800;
+      box-shadow: 0 8px 22px rgba(232, 114, 58, 0.3);
+      transition: transform 0.14s ease, filter 0.14s ease;
+    }
+
+    .cta:active {
+      transform: scale(0.98);
+      filter: brightness(0.95);
+    }
+
+    .swipe-fx {
+      position: absolute;
+      inset: 0;
+      z-index: 12;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .swipe-fx::before {
+      content: "";
+      position: absolute;
+      width: 220%;
+      height: 30%;
+      left: -60%;
+      top: 35%;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 186, 152, 0),
+        rgba(255, 186, 152, 0.65),
+        rgba(232, 114, 58, 0.9),
+        rgba(255, 186, 152, 0.65),
+        rgba(255, 186, 152, 0)
+      );
+      filter: blur(2px);
+      transform: translateX(-120%) rotate(0deg);
+    }
+
+    .swipe-fx.show {
+      opacity: 1;
+    }
+
+    .swipe-fx.show::before {
+      animation: slash 1.05s cubic-bezier(0.18, 0.82, 0.22, 1) forwards;
+    }
+
+    .swipe-fx[data-dir="left"]::before { transform: translateX(120%) rotate(0deg); animation-name: slash-left; }
+    .swipe-fx[data-dir="up"]::before { transform: translateY(120%) rotate(90deg); animation-name: slash-up; }
+    .swipe-fx[data-dir="down"]::before { transform: translateY(-120%) rotate(90deg); animation-name: slash-down; }
+
+    @keyframes slash {
+      from { transform: translateX(-120%) rotate(0deg); }
+      to { transform: translateX(120%) rotate(0deg); opacity: 0; }
+    }
+
+    @keyframes slash-left {
+      from { transform: translateX(120%) rotate(0deg); }
+      to { transform: translateX(-120%) rotate(0deg); opacity: 0; }
+    }
+
+    @keyframes slash-up {
+      from { transform: translateY(120%) rotate(90deg); }
+      to { transform: translateY(-120%) rotate(90deg); opacity: 0; }
+    }
+
+    @keyframes slash-down {
+      from { transform: translateY(-120%) rotate(90deg); }
+      to { transform: translateY(120%) rotate(90deg); opacity: 0; }
+    }
+
+    .end {
+      position: absolute;
+      inset: 0;
+      z-index: 21;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: max(1.2rem, env(safe-area-inset-top)) 1.4rem max(1.6rem, env(safe-area-inset-bottom));
+      background: radial-gradient(circle at 50% -10%, rgba(232, 114, 58, 0.13), transparent 52%), #110f0d;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.35s ease, visibility 0.35s step-end;
+    }
+
+    .end.show {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.35s ease, visibility 0s;
+    }
+
+    .end h2 {
+      font-size: clamp(1.7rem, 9vw, 2.4rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      color: #ffe4d3;
+    }
+
+    .end .result {
+      color: #ffd9c7;
+      font-size: 1.08rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .end .tagline {
+      color: rgba(242, 228, 206, 0.82);
+      font-size: 0.96rem;
+      margin-bottom: 1.6rem;
+      letter-spacing: 0.02em;
+    }
+
+    .end.perfect h2,
+    .end.perfect .tagline {
+      color: #ffb285;
+      text-shadow: 0 0 18px rgba(232, 114, 58, 0.52);
+    }
+
+    .end.zero .tagline {
+      color: #ffc6c6;
+    }
+  </style>
+</head>
+<body>
+  <main class="game" id="gameRoot">
+    <section class="top-zone">
+      <header class="topbar">
+        <div class="timer" id="timer">60</div>
+        <div class="score">steps climbed <strong id="score">0/20</strong></div>
+      </header>
+
+      <div class="villain-stage">
+        <p class="status" id="statusText">survive the swipe</p>
+        <div class="villain-zone">
+          <div class="villain" id="villain"></div>
+          <div class="round-timer">
+            <div class="round-bar">
+              <div class="round-bar-fill" id="roundBarFill"></div>
+            </div>
+          </div>
+          <div class="arrow" id="arrow" data-dir="up"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="arena">
+      <div class="track-wrap">
+        <div class="track" id="track">
+          <svg class="track-svg" viewBox="0 0 200 500" preserveAspectRatio="none" aria-hidden="true">
+            <path class="track-path-glow" id="trackPathGlow"></path>
+            <path class="track-path-core" id="trackPathCore"></path>
+            <path class="track-path-center" id="trackPathCenter"></path>
+          </svg>
+          <div class="ticks" id="ticks"></div>
+
+          <div class="player" id="player"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button class="btn up" data-dir="up" aria-label="up"><span class="chev"></span><span class="btn-label">up</span></button>
+      <button class="btn left" data-dir="left" aria-label="left"><span class="chev"></span><span class="btn-label">left</span></button>
+      <button class="btn right" data-dir="right" aria-label="right"><span class="chev"></span><span class="btn-label">right</span></button>
+      <button class="btn down" data-dir="down" aria-label="down"><span class="chev"></span><span class="btn-label">down</span></button>
+    </section>
+    <div class="swipe-fx" id="swipeFx" data-dir="right"></div>
+  </main>
+
+  <section class="overlay show" id="startScreen" aria-live="polite">
+    <div>
+      <h1 class="start-title">Slide</h1>
+      <p class="start-sub">tap any direction except the villain's</p>
+      <button class="cta" id="startBtn">start</button>
+    </div>
+  </section>
+
+  <section class="end" id="endScreen" aria-live="polite">
+    <div>
+      <h2>Time Up</h2>
+      <p class="result" id="resultLine">you climbed 0/20 steps</p>
+      <p class="tagline" id="taglineLine">the villain won today</p>
+      <button class="cta" id="replayBtn">replay</button>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      var ROUND_MS = 2500;
+      var FREEZE_MS = 5000;
+      var GAME_SECONDS = 60;
+      var MAX_STEPS = 20;
+      var DIRECTIONS = ["up", "down", "left", "right"];
+
+      var timerEl = document.getElementById("timer");
+      var scoreEl = document.getElementById("score");
+      var statusEl = document.getElementById("statusText");
+      var villainEl = document.getElementById("villain");
+      var arrowEl = document.getElementById("arrow");
+      var trackEl = document.getElementById("track");
+      var playerEl = document.getElementById("player");
+      var ticksEl = document.getElementById("ticks");
+      var trackPathGlowEl = document.getElementById("trackPathGlow");
+      var trackPathCoreEl = document.getElementById("trackPathCore");
+      var trackPathCenterEl = document.getElementById("trackPathCenter");
+      var roundBarFillEl = document.getElementById("roundBarFill");
+      var swipeFxEl = document.getElementById("swipeFx");
+      var startScreenEl = document.getElementById("startScreen");
+      var startBtn = document.getElementById("startBtn");
+      var endScreenEl = document.getElementById("endScreen");
+      var resultLineEl = document.getElementById("resultLine");
+      var taglineLineEl = document.getElementById("taglineLine");
+      var replayBtn = document.getElementById("replayBtn");
+      var controlButtons = Array.prototype.slice.call(document.querySelectorAll(".btn[data-dir]"));
+
+      var state = {
+        secondsLeft: GAME_SECONDS,
+        steps: 0,
+        currentVillainDir: "up",
+        chosenDir: null,
+        roundOpen: false,
+        freezeUntil: 0,
+        gameOver: false,
+        timerIntervalId: null,
+        roundTimeoutId: null,
+        thawTimeoutId: null,
+        roundTickIntervalId: null,
+        tickPoints: []
+      };
+
+      function getPathX(progress) {
+        var center = trackEl.clientWidth / 2;
+        var amplitude = Math.min(42, trackEl.clientWidth * 0.2);
+        return center + Math.sin(progress * Math.PI * 3.2) * amplitude;
+      }
+
+      function drawTrackPath() {
+        var h = trackEl.clientHeight;
+        var segments = 44;
+        var d = "";
+        for (var i = 0; i <= segments; i += 1) {
+          var p = i / segments;
+          var x = getPathX(p);
+          var y = h - p * h;
+          d += (i === 0 ? "M " : " L ") + x.toFixed(2) + " " + y.toFixed(2);
+        }
+        trackPathGlowEl.setAttribute("d", d);
+        trackPathCoreEl.setAttribute("d", d);
+        trackPathCenterEl.setAttribute("d", d);
+      }
+
+      function updateCompletedTicks(stepCount) {
+        var tickNodes = Array.prototype.slice.call(document.querySelectorAll(".tick"));
+        tickNodes.forEach(function (tick, index) {
+          tick.classList.toggle("completed", index <= stepCount);
+        });
+      }
+
+      function makeTicks() {
+        drawTrackPath();
+        state.tickPoints = [];
+        var html = "";
+        for (var i = 0; i <= MAX_STEPS; i += 1) {
+          var progress = i / MAX_STEPS;
+          var x = getPathX(progress);
+          var bottom = progress * trackEl.clientHeight;
+          state.tickPoints.push({ x: x, bottom: bottom });
+          html += '<span class="tick" style="left:' + x.toFixed(2) + "px;bottom:" + bottom.toFixed(2) + 'px"></span>';
+        }
+        ticksEl.innerHTML = html;
+        updateCompletedTicks(0);
+      }
+
+      function setPlayerStep(stepCount) {
+        var idx = Math.max(0, Math.min(MAX_STEPS, stepCount));
+        if (!state.tickPoints.length) {
+          makeTicks();
+        }
+        var point = state.tickPoints[idx] || { x: trackEl.clientWidth / 2, bottom: 8 };
+        playerEl.style.left = point.x + "px";
+        playerEl.style.bottom = point.bottom + "px";
+        updateCompletedTicks(idx);
+      }
+
+      function updateTopUi() {
+        timerEl.textContent = String(state.secondsLeft);
+        scoreEl.textContent = state.steps + "/" + MAX_STEPS;
+      }
+
+      function setStatus(text, frozen) {
+        statusEl.textContent = text;
+        statusEl.classList.toggle("frozen", !!frozen);
+      }
+
+      function clearRoundTimers() {
+        clearTimeout(state.roundTimeoutId);
+        clearInterval(state.roundTickIntervalId);
+      }
+
+      function vibrate(pattern) {
+        if (!("vibrate" in navigator)) {
+          return;
+        }
+        try {
+          navigator.vibrate(pattern);
+        } catch (_) {}
+      }
+
+      function freezePlayer() {
+        var thawAt = Date.now() + FREEZE_MS;
+        state.freezeUntil = thawAt;
+        playerEl.classList.add("frozen");
+        document.querySelector(".controls").classList.add("frozen");
+        setStatus("frozen 5s", true);
+        vibrate([100, 50, 100]);
+        clearTimeout(state.thawTimeoutId);
+        state.thawTimeoutId = setTimeout(function () {
+          if (Date.now() >= state.freezeUntil) {
+            playerEl.classList.remove("frozen");
+            document.querySelector(".controls").classList.remove("frozen");
+            if (!state.gameOver) {
+              setStatus("survive the swipe", false);
+            }
+          }
+        }, FREEZE_MS + 60);
+      }
+
+      function bumpVillain() {
+        villainEl.classList.remove("swipe");
+        void villainEl.offsetWidth;
+        villainEl.classList.add("swipe");
+      }
+
+      function shootArrow(direction) {
+        arrowEl.classList.remove("show");
+        arrowEl.setAttribute("data-dir", direction);
+        void arrowEl.offsetWidth;
+        arrowEl.classList.add("show");
+        setTimeout(function () {
+          arrowEl.classList.remove("show");
+        }, 1000);
+      }
+
+      function pulseButton(direction) {
+        controlButtons.forEach(function (btn) {
+          if (btn.getAttribute("data-dir") === direction) {
+            btn.classList.add("hit");
+            setTimeout(function () {
+              btn.classList.remove("hit");
+            }, 180);
+          }
+        });
+      }
+
+      function startRoundVisualTimer() {
+        roundBarFillEl.classList.remove("animate");
+        void roundBarFillEl.offsetWidth;
+        roundBarFillEl.classList.add("animate");
+        clearInterval(state.roundTickIntervalId);
+      }
+
+      function animateSwipe(direction) {
+        swipeFxEl.classList.remove("show");
+        swipeFxEl.setAttribute("data-dir", direction);
+        void swipeFxEl.offsetWidth;
+        swipeFxEl.classList.add("show");
+        setTimeout(function () {
+          swipeFxEl.classList.remove("show");
+        }, 1100);
+      }
+
+      function resolveButtonFeedback(playerChoice, isCorrect) {
+        if (!playerChoice) {
+          return;
+        }
+        controlButtons.forEach(function (btn) {
+          if (btn.getAttribute("data-dir") === playerChoice) {
+            btn.classList.remove("resolve-correct", "resolve-wrong");
+            void btn.offsetWidth;
+            btn.classList.add(isCorrect ? "resolve-correct" : "resolve-wrong");
+            setTimeout(function () {
+              btn.classList.remove("resolve-correct", "resolve-wrong");
+            }, 460);
+          }
+        });
+      }
+
+      function resolveRound(playerChoice) {
+        if (state.gameOver || !state.roundOpen) {
+          return;
+        }
+        state.roundOpen = false;
+        clearTimeout(state.roundTimeoutId);
+        clearInterval(state.roundTickIntervalId);
+        roundBarFillEl.classList.remove("animate");
+
+        animateSwipe(state.currentVillainDir);
+        var canMove = Date.now() >= state.freezeUntil;
+        var isCorrect = canMove && playerChoice && playerChoice !== state.currentVillainDir;
+        resolveButtonFeedback(playerChoice, isCorrect);
+
+        if (isCorrect) {
+          state.steps = Math.min(MAX_STEPS, state.steps + 1);
+          setPlayerStep(state.steps);
+          playerEl.classList.add("climb");
+          setTimeout(function () {
+            playerEl.classList.remove("climb");
+          }, 300);
+          setStatus("clean move", false);
+        } else if (playerChoice === state.currentVillainDir) {
+          freezePlayer();
+        } else if (!canMove) {
+          setStatus("frozen", true);
+        } else {
+          setStatus("no input", false);
+        }
+        updateTopUi();
+        if (!state.gameOver) {
+          startRound();
+        }
+      }
+
+      function startRound() {
+        if (state.gameOver) {
+          return;
+        }
+        state.currentVillainDir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
+        state.chosenDir = null;
+        state.roundOpen = true;
+
+        if (Date.now() < state.freezeUntil) {
+          setStatus("frozen " + Math.ceil((state.freezeUntil - Date.now()) / 1000) + "s", true);
+        } else {
+          setStatus("avoid " + state.currentVillainDir, false);
+        }
+
+        bumpVillain();
+        shootArrow(state.currentVillainDir);
+        vibrate(80);
+        startRoundVisualTimer();
+
+        state.roundTimeoutId = setTimeout(function () {
+          resolveRound(state.chosenDir);
+        }, ROUND_MS);
+      }
+
+      function onDirectionTap(direction) {
+        if (state.gameOver || !state.roundOpen) {
+          return;
+        }
+        if (Date.now() < state.freezeUntil) {
+          return;
+        }
+        if (state.chosenDir) {
+          return;
+        }
+        pulseButton(direction);
+        state.chosenDir = direction;
+      }
+
+      function getTagline(steps) {
+        if (steps === 20) return "you beat the villain. rare.";
+        if (steps >= 16) return "so close. the villain remembers.";
+        if (steps >= 11) return "not bad. the villain is still unimpressed.";
+        if (steps >= 6) return "the villain won today. try again.";
+        if (steps >= 1) return "you barely moved. the villain is laughing.";
+        return "you never even got off the ground. embarrassing.";
+      }
+
+      function endGame() {
+        state.gameOver = true;
+        state.roundOpen = false;
+        clearRoundTimers();
+        clearInterval(state.timerIntervalId);
+        clearTimeout(state.thawTimeoutId);
+        playerEl.classList.remove("frozen");
+        document.querySelector(".controls").classList.remove("frozen");
+        setStatus("time up", false);
+        resultLineEl.textContent = "you climbed " + state.steps + "/" + MAX_STEPS + " steps";
+        taglineLineEl.textContent = getTagline(state.steps);
+        endScreenEl.classList.remove("perfect", "zero");
+        if (state.steps === 20) {
+          endScreenEl.classList.add("perfect");
+        } else if (state.steps === 0) {
+          endScreenEl.classList.add("zero");
+        }
+        endScreenEl.classList.add("show");
+      }
+
+      function resetStateForGame() {
+        clearRoundTimers();
+        clearInterval(state.timerIntervalId);
+        clearTimeout(state.thawTimeoutId);
+        state.secondsLeft = GAME_SECONDS;
+        state.steps = 0;
+        state.currentVillainDir = "up";
+        state.chosenDir = null;
+        state.roundOpen = false;
+        state.freezeUntil = 0;
+        state.gameOver = false;
+        state.timerIntervalId = null;
+        state.roundTimeoutId = null;
+        state.thawTimeoutId = null;
+        state.roundTickIntervalId = null;
+        playerEl.classList.remove("frozen", "climb");
+        document.querySelector(".controls").classList.remove("frozen");
+        endScreenEl.classList.remove("show");
+        endScreenEl.classList.remove("perfect", "zero");
+        swipeFxEl.classList.remove("show");
+        roundBarFillEl.classList.remove("animate");
+        updateTopUi();
+        setPlayerStep(0);
+        setStatus("survive the swipe", false);
+      }
+
+      function startGame() {
+        resetStateForGame();
+        startRound();
+        state.timerIntervalId = setInterval(function () {
+          state.secondsLeft -= 1;
+          if (state.secondsLeft <= 0) {
+            state.secondsLeft = 0;
+            updateTopUi();
+            endGame();
+            return;
+          }
+          updateTopUi();
+        }, 1000);
+      }
+
+      controlButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+          onDirectionTap(button.getAttribute("data-dir"));
+        });
+      });
+
+      startBtn.addEventListener("click", function () {
+        startScreenEl.classList.remove("show");
+        startGame();
+      });
+
+      replayBtn.addEventListener("click", function () {
+        endScreenEl.classList.remove("show");
+        startGame();
+      });
+
+      window.addEventListener("resize", function () {
+        makeTicks();
+        setPlayerStep(state.steps);
+      });
+
+      makeTicks();
+      updateTopUi();
+      setPlayerStep(0);
+      setStatus("ready", false);
+    })();
+  </script>
+</body>
+</html>
