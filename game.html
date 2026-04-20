@@ -122,22 +122,6 @@
       min-height: 0;
     }
 
-    .status {
-      position: static;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: rgba(242, 228, 206, 0.92);
-      min-height: 1em;
-      text-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
-      transition: color 0.2s ease;
-    }
-
-    .status.frozen {
-      color: #b9d8f4;
-    }
-
     .track-wrap {
       width: 100%;
       max-width: 320px;
@@ -317,6 +301,7 @@
     }
 
     .arrow {
+      display: none !important;
       position: absolute;
       left: 50%;
       top: 22px;
@@ -725,7 +710,6 @@
       </header>
 
       <div class="villain-stage">
-        <p class="status" id="statusText">survive the swipe</p>
         <div class="villain-zone">
           <div class="villain" id="villain"></div>
           <div class="round-timer">
@@ -754,10 +738,10 @@
     </section>
 
     <section class="controls">
-      <button class="btn up" data-dir="up" aria-label="up"><span class="chev"></span><span class="btn-label">up</span></button>
-      <button class="btn left" data-dir="left" aria-label="left"><span class="chev"></span><span class="btn-label">left</span></button>
-      <button class="btn right" data-dir="right" aria-label="right"><span class="chev"></span><span class="btn-label">right</span></button>
-      <button class="btn down" data-dir="down" aria-label="down"><span class="chev"></span><span class="btn-label">down</span></button>
+      <button class="btn up" type="button" data-dir="up" aria-label="Choose"></button>
+      <button class="btn left" type="button" data-dir="left" aria-label="Choose"></button>
+      <button class="btn right" type="button" data-dir="right" aria-label="Choose"></button>
+      <button class="btn down" type="button" data-dir="down" aria-label="Choose"></button>
     </section>
     <div class="swipe-fx" id="swipeFx" data-dir="right"></div>
   </main>
@@ -765,7 +749,7 @@
   <section class="overlay show" id="startScreen" aria-live="polite">
     <div>
       <h1 class="start-title">Slide</h1>
-      <p class="start-sub">tap any direction except the villain's</p>
+      <p class="start-sub">tap start</p>
       <button class="cta" id="startBtn">start</button>
     </div>
   </section>
@@ -789,7 +773,6 @@
 
       var timerEl = document.getElementById("timer");
       var scoreEl = document.getElementById("score");
-      var statusEl = document.getElementById("statusText");
       var villainEl = document.getElementById("villain");
       var arrowEl = document.getElementById("arrow");
       var trackEl = document.getElementById("track");
@@ -882,10 +865,7 @@
         scoreEl.textContent = state.steps + "/" + MAX_STEPS;
       }
 
-      function setStatus(text, frozen) {
-        statusEl.textContent = text;
-        statusEl.classList.toggle("frozen", !!frozen);
-      }
+      function setStatus() {}
 
       function clearRoundTimers() {
         clearTimeout(state.roundTimeoutId);
